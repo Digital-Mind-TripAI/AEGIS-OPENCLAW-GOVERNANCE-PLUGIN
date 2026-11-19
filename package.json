@@ -1,6 +1,6 @@
 {
   "name": "@aegis/openclaw-governance",
-  "version": "1.0.1-preview.1",
+  "version": "1.0.1-preview.2",
   "description": "AEGIS OpenClaw governance preview: audited chat admission, tool review, and optional adaptive model discovery.",
   "type": "module",
   "main": "dist/index.js",
@@ -9,7 +9,8 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "verify:package": "node scripts/verify-package.mjs"
+    "verify:package": "node scripts/verify-package.mjs",
+    "verify:install": "node scripts/verify-install.mjs"
   },
   "files": [
     "dist/**",

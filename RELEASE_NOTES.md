@@ -1,3 +1,15 @@
+# 1.0.1-preview.2
+
+Local follow-up candidate; not published to a package registry or as a GitHub Release.
+
+- Narrow whole-message educational/test-review quotation handling for admission; tool payloads retain normal review.
+- Specific self-directed uncertainty expressions no longer trigger an insult penalty. Additional directives and insults remain reviewed.
+-31 local tests pass. Live signed-in Gateway verifies corrected admission, mixed override and critical tool blocking, explicit denial, and exact harmless allow-once execution with linked audit outcomes.
+- Runners that emit both admission hooks retain the exact recently admitted discussion decision when host context is added. A bounded, single-use session receipt masks only that admitted span for scoring; surrounding directives remain reviewed and original text remains audited. Direct runner calls have no such receipt.
+- Added packaged installation, isolated-test-home and approval-pairing guidance. Existing hosted CI covers the earlier public source, not this candidate.
+- Ordinary-use checks cover disagreement, urgency/uncertainty and negated boundaries. This bounded session trial is not long-duration reliability evidence.
+- Diagnosed isolated-install failures as Drive upload staging creating temporary hard links in the synchronized Documents test directory. Fresh local temporary profiles preserve the host's file-safety checks; added a three-install verifier and CI step, with no discovery retries or manual load paths.
+
 # 1.0.1-preview.1
 
 Local preview candidate; no registry publication has been performed.

@@ -2,6 +2,7 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 
 import { evaluateIntegrityPrism } from "./governance/prism.js";
+import { admissionReviewText } from "./governance/shadow-affects.js";
 import { buildIdqraMessage } from "./governance/idqra.js";
 import { Bookshelf } from "./governance/bookshelf.js";
 import { DEFAULT_CONFIG, type AegisPluginConfig } from "./types.js";
@@ -24,6 +25,7 @@ function resolveConfig(raw: Record<string, unknown> | undefined): AegisPluginCon
 
 function registerHooks(api: OpenClawPluginApi, config: AegisPluginConfig, bookshelf: Bookshelf) {
   const log = api.logger;
+  const discussions = new Map<string, { text: string; reviewed: string; at: number }>();
   const retain = (entry: Parameters<Bookshelf["append"]>[0]) => {
     try { bookshelf.append(entry); return true; }
     catch { log.error("[aegis-governance] Audit storage unavailable; operation blocked."); return false; }
@@ -38,10 +40,10 @@ function registerHooks(api: OpenClawPluginApi, config: AegisPluginConfig, booksh
     sessionKey?: string;
     agentId?: string;
     runId?: string;
-  }) {
+  }, scoringPrompt = prompt) {
     if (!config.enabled) return { outcome: "pass" as const };
 
-    const prism = evaluateIntegrityPrism(prompt, config.threshold);
+    const prism = evaluateIntegrityPrism(scoringPrompt, config.threshold);
     const verdict = prism.executionEligible ? "pass" : "blocked";
 
     const entry = bookshelf.buildEntry({
@@ -89,7 +91,15 @@ function registerHooks(api: OpenClawPluginApi, config: AegisPluginConfig, booksh
     return { outcome: "pass" as const };
   }
 
-  api.on("before_agent_run", async (event, ctx) => reviewSignal(event.prompt, ctx));
+  api.on("before_agent_run", async (event, ctx) => {
+    const prior = ctx.sessionKey ? discussions.get(ctx.sessionKey) : undefined;
+    if (ctx.sessionKey) discussions.delete(ctx.sessionKey);
+    // Consume only an exact, recently admitted discussion span. Review all host
+    // context and any extra directives normally; direct runners have no receipt.
+    const scoring = prior && Date.now() - prior.at < 120_000 && event.prompt.includes(prior.text)
+      ? event.prompt.replace(prior.text, prior.reviewed) : event.prompt;
+    return reviewSignal(event.prompt, ctx, scoring);
+  });
 
   // User chat admission precedes model/harness dispatch, including Codex.
   // A handled reply returns the governance explanation without invoking a model.
@@ -97,6 +107,17 @@ function registerHooks(api: OpenClawPluginApi, config: AegisPluginConfig, booksh
   api.on("before_agent_reply", async (event, ctx) => {
     if (ctx.trigger && ctx.trigger !== "user") return;
     const decision = reviewSignal(event.cleanedBody, ctx);
+    if (ctx.sessionKey) {
+      discussions.delete(ctx.sessionKey);
+      if (config.enabled && decision.outcome === "pass") {
+        const reviewed = admissionReviewText(event.cleanedBody);
+        if (reviewed !== event.cleanedBody) {
+          for (const [key, value] of discussions) if (Date.now() - value.at >= 120_000) discussions.delete(key);
+          if (discussions.size >= 1000) discussions.delete(discussions.keys().next().value!);
+          discussions.set(ctx.sessionKey, { text: event.cleanedBody, reviewed, at: Date.now() });
+        }
+      }
+    }
     if (decision.outcome === "block") {
       return {
         handled: true,
@@ -116,7 +137,7 @@ function registerHooks(api: OpenClawPluginApi, config: AegisPluginConfig, booksh
     const auditSignal = `${event.toolName} ${JSON.stringify(event.params, (key, value: unknown) =>
       /^(?:api[_-]?key|authorization|proxy-authorization|password|passwd|secret|access[_-]?token|refresh[_-]?token|token|cookie|set-cookie)$/i.test(key)
         ? "[REDACTED]" : value)}`;
-    const prism = evaluateIntegrityPrism(toolSignal, config.threshold);
+    const prism = evaluateIntegrityPrism(toolSignal, config.threshold, "tool");
     const isCritical = prism.lowestVirtue.score < config.threshold * 0.6;
     const outrightBlock = !prism.executionEligible && (isCritical || !config.blockOnFail);
     const entry = bookshelf.buildEntry({ sessionKey: ctx.sessionKey, agentId: ctx.agentId,

@@ -26,9 +26,9 @@ function add(
   map[virtue].push({ reason, value });
 }
 
-function buildDeductions(signal: string): Record<VirtueName, Deduction[]> {
+function buildDeductions(signal: string, surface: "admission" | "tool"): Record<VirtueName, Deduction[]> {
   const d = emptyDeductions();
-  const m = detectSignalMarkers(signal);
+  const m = detectSignalMarkers(signal, surface);
 
   if (m.pressureLanguage) {
     add(d, "Respect", "Pressure-adjacent language compresses agency.", 30);
@@ -91,9 +91,9 @@ function buildDeductions(signal: string): Record<VirtueName, Deduction[]> {
   return d;
 }
 
-export function evaluateIntegrityPrism(signal: string, threshold: number): IntegrityPrismResult {
+export function evaluateIntegrityPrism(signal: string, threshold: number, surface: "admission" | "tool" = "admission"): IntegrityPrismResult {
   if (!Number.isFinite(threshold) || threshold < 0 || threshold > 100) throw new Error("Invalid governance threshold.");
-  const deductions = buildDeductions(signal);
+  const deductions = buildDeductions(signal, surface);
   const virtues = Object.fromEntries(
     VIRTUES.map((v) => {
       const totalDeduction = deductions[v].reduce((sum, item) => sum + item.value, 0);

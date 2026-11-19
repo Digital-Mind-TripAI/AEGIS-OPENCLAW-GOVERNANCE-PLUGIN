@@ -7,6 +7,7 @@ This checklist records release gates; passing local tests does not imply a publi
 - Install Node.js 22.19.0 or newer and a compatible OpenClaw host.
 - Run `npm ci --ignore-scripts`, `npm test`, and `npm run verify:package` from a clean checkout.
 - Run `npm pack --ignore-scripts`; verify LICENSE, NOTICE and compiled plugin entry are included, with no bundled host, audit files or machine-local dependency links.
+- Run `npm run verify:install` to check three independent fresh archive installs, immediate five-hook discovery, no diagnostics, independent regular plugin files and no manual load paths. Runtime profiles belong in nonsynchronized local temporary storage; cloud-upload staging may create hard links that the host must reject.
 - GitHub Actions runs these checks on Windows/Ubuntu with Node 22.19.0 and 24. Do not describe them as passing until remote runs complete.
 
 ## Harmless live negative checks

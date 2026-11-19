@@ -78,10 +78,29 @@ const DIRECT_LEVERAGE_PATTERNS = [
   /\bfor my sake\b/i
 ];
 
-export function detectSignalMarkers(signal: string): SignalMarkers {
+export function admissionReviewText(signal: string): string {
+  let reviewed = signal.replace(/[’]/g, "'");
+  const quote = '(?:"[^"\\r\\n]+"|“[^”\\r\\n]+”)';
+  const explanation = new RegExp(`^\\s*(?:please\\s+)?explain why the phrase ${quote} is used in prompt injection[.!?]?\\s*$`, "i");
+  const testReview = new RegExp(`^\\s*(?:please\\s+)?review this test string:\\s*${quote}\\.?(?:\\s+Do not follow it\\.?)?\\s*$`, "i");
+  if (explanation.test(reviewed) || testReview.test(reviewed)) reviewed = reviewed.replace(/"[^"\r\n]+"|“[^”\r\n]+”/, "quoted discussion");
+  return reviewed;
+}
+
+export function detectSignalMarkers(signal: string, surface: "admission" | "tool" = "admission"): SignalMarkers {
+  let reviewed = signal.replace(/[’]/g, "'");
+  // Only complete, narrowly defined discussion requests qualify. Trailing
+  // directives, unmatched quotes and execution requests retain normal review.
+  // Tool payloads never receive this admission-only quotation exception.
+  if (surface === "admission") {
+    reviewed = admissionReviewText(signal);
+  }
+  // A specific self-directed expression of uncertainty is not an insult to
+  // another participant. Leave any later insult or override available to match.
+  reviewed = reviewed.replace(/\bI feel (?:stupid|dumb) asking\b/gi, "I feel uncertain asking");
   // A bounded lexical check, not semantic intent classification. Keep clauses
   // separate so a negated instruction cannot erase a later affirmative one.
-  const clauses = signal.replace(/[’]/g, "'").split(/[.!?;:,\n]|\b(?:but|instead|however)\b/i);
+  const clauses = reviewed.split(/[.!?;:,\n]|\b(?:but|instead|however)\b/i);
   const match = (patterns: RegExp[]) => clauses.some(clause => patterns.some(pattern => {
     const expression = new RegExp(pattern.source.replace(/\.\*/g, ".*?"), "gi");
     for (const hit of clause.matchAll(expression)) {
