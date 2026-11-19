@@ -1,0 +1,58 @@
+{
+  "id": "aegis-governance",
+  "name": "AEGIS Governance",
+  "description": "AEGIS lexical governance preview: audited user-chat admission, delivered tool-call review and optional adaptive model discovery. Coverage depends on host hook dispatch.",
+  "kind": "service",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "activateOnStartup": {
+        "type": "boolean",
+        "description": "Register governance hooks when the Gateway starts. Set to false to disable governance without removing the plugin. Requires Gateway restart to take effect.",
+        "default": true
+      },
+      "enabled": {
+        "type": "boolean",
+        "description": "Enable or disable governance evaluation at runtime. Unlike activateOnStartup, this can be toggled without a restart.",
+        "default": true
+      },
+      "threshold": {
+        "type": "number",
+        "description": "Minimum virtue score (0–100) required for execution eligibility. The lowest-scoring virtue is the gate — not the average. Default: 75.",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 75
+      },
+      "blockOnFail": {
+        "type": "boolean",
+        "description": "When true, a noncritical failing tool review requests host approval; critical failures block. When false, all failing tool reviews block outright. Does not disable governance. Default: true.",
+        "default": true
+      },
+      "modelPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Opt-in native Codex model discovery and selection. Updates only model/runtime configuration; never installs software or handles credentials.",
+        "properties": {
+          "enabled": { "type": "boolean", "default": false },
+          "mode": { "type": "string", "enum": ["provider-default", "pinned"], "default": "provider-default" },
+          "model": { "type": "string", "description": "Model ID to retain in pinned mode." },
+          "onMissing": { "type": "string", "enum": ["hold", "provider-default"], "default": "hold" },
+          "runtimeCommand": { "type": "string", "default": "auto", "description": "auto locates an installed native Codex runtime; otherwise provide an absolute executable path." },
+          "refreshSeconds": { "type": "integer", "minimum": 60, "maximum": 86400, "default": 900 },
+          "timeoutMs": { "type": "integer", "minimum": 1000, "maximum": 60000, "default": 15000 }
+        }
+      },
+      "bookshelfPath": {
+        "type": "string",
+        "description": "Absolute path to the Bookshelf JSONL file. Append-only. Governance evaluations are written here regardless of verdict. Default: ~/.openclaw/aegis-bookshelf.jsonl"
+      }
+    }
+  },
+  "install": {
+    "minHostVersion": ">=2026.6.10"
+  }
+}
